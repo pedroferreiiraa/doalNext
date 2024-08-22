@@ -22,6 +22,9 @@ export const formatDateToLocal = (
 };
 
 export const generateYAxis = (revenue: Revenue[]) => {
+  if (!Array.isArray(revenue)) {
+    throw new Error('Expected revenue to be an array');
+  }
   // Calculate what labels we need to display on the y-axis
   // based on highest record and in 1000s
   const yAxisLabels = [];
