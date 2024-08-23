@@ -1,64 +1,119 @@
-import { generateYAxis } from '@/app/lib/utils';
-import { CalendarIcon } from '@heroicons/react/24/outline';
-import { lusitana } from '@/app/ui/fonts';
-import { Revenue } from '@/app/lib/definitions';
-import { fetchRevenue } from '@/app/lib/data';
+'use client';
 
-// This component is representational only.
-// For data visualization UI, check out:
-// https://www.tremor.so/
-// https://www.chartjs.org/
-// https://airbnb.io/visx/
+import { useState, useEffect } from 'react';
+import { Bar } from 'react-chartjs-2';
+import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from 'chart.js';
 
-export default async function RevenueChart() { // Make component async, remove the props
-  const revenue = await fetchRevenue(); 
-  
-  const chartHeight = 350;
-  // NOTE: Uncomment this code in Chapter 7
+// Registrar componentes do Chart.js
+ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale);
 
-  const { yAxisLabels, topLabel } = generateYAxis(revenue);
+export default function RevenueChart() {
+  const [data, setData] = useState([]);
+  const [showComparison, setShowComparison] = useState(false);  // Estado para mostrar/ocultar comparação
 
-  if (!revenue || revenue.length === 0) {
-    return <p className="mt-4 text-gray-400">No data available.</p>;
-  }
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch('http://localhost:3001/api/faturado');
+        const result = await response.json();
+
+        // Agrupar os dados por data de expedição e tipo de documento
+        const groupedData = result.reduce((acc, curr) => {
+          const date = curr['Data de expedição'];
+          const tipoDoc = curr['Tipo de doc.'];
+
+          if (!acc[date]) {
+            acc[date] = {
+              date: date,
+              pedidos: 0,
+              nf: 0,
+            };
+          }
+
+          if (tipoDoc === 'Pedidos') {
+            acc[date].pedidos += curr['Total Valor'];
+          } else if (tipoDoc === 'NF') {
+            acc[date].nf += curr['Total Valor'];
+          }
+
+          return acc;
+        }, {});
+
+        // Transformar o objeto agrupado em um array para usar no gráfico
+        const formattedData = Object.values(groupedData);
+        setData(formattedData);
+        
+      } catch (error) {
+        console.error('Erro:', error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Preparar os dados para o gráfico
+  const chartData = {
+    labels: data.map(d => d.date),
+    datasets: [
+      {
+        label: 'Pedidos',
+        data: data.map(d => d.pedidos),
+        backgroundColor: 'rgba(255, 162, 235, 0.6)', // Cor azul clara
+        borderColor: 'rgba(255, 162, 235, 1)', // Cor azul
+        borderWidth: 1,
+      },
+      {
+        label: 'NF',
+        data: data.map(d => d.nf),
+        backgroundColor: 'rgba(75, 192, 192, 0.6)', // Cor verde clara
+        borderColor: 'rgba(75, 192, 192, 1)', // Cor verde
+        borderWidth: 1,
+      },
+    ],
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+      },
+      tooltip: {
+        callbacks: {
+          label: function(tooltipItem) {
+            return `${tooltipItem.dataset.label}: R$ ${tooltipItem.raw.toLocaleString()}`;
+          },
+        },
+      },
+    },
+    scales: {
+      x: {
+        stacked: true,
+      },
+      y: {
+        stacked: true,
+        beginAtZero: true,
+        ticks: {
+          callback: function(value) {
+            return `R$ ${value.toLocaleString()}`;
+          },
+        },
+      },
+    },
+  };
 
   return (
-    <div className="w-full md:col-span-4">
-      <h2 className={`${lusitana.className} mb-4 text-xl md:text-2xl`}>
-        Recent Revenue
-      </h2>
-      {/* NOTE: Uncomment this code in Chapter 7 */}
-
-      <div className="rounded-xl bg-gray-50 p-4">
-        <div className="sm:grid-cols-13 mt-0 grid grid-cols-12 items-end gap-2 rounded-md bg-white p-4 md:gap-4">
-          <div
-            className="mb-6 hidden flex-col justify-between text-sm text-gray-400 sm:flex"
-            style={{ height: `${chartHeight}px` }}
-          >
-            {yAxisLabels.map((label) => (
-              <p key={label}>{label}</p>
-            ))}
-          </div>
-
-          {revenue.map((month) => (
-            <div key={month.month} className="flex flex-col items-center gap-2">
-              <div
-                className="w-full rounded-md bg-blue-300"
-                style={{
-                  height: `${(chartHeight / topLabel) * month.revenue}px`,
-                }}
-              ></div>
-              <p className="-rotate-90 text-sm text-gray-400 sm:rotate-0">
-                {month.month}
-              </p>
-            </div>
-          ))}
-        </div>
-        <div className="flex items-center pb-2 pt-6">
-          <CalendarIcon className="h-5 w-5 text-gray-500" />
-          <h3 className="ml-2 text-sm text-gray-500 ">Last 12 months</h3>
-        </div>
+    <>
+      <div className="w-full h-80 p-4">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          Valor Total por Dia - Pedidos e NF
+        </h3>
+        <p className="text-sm text-gray-600 mb-4">
+          Visualização do valor total dos pedidos e NF realizados em cada dia.
+        </p>
+        <Bar data={chartData} options={chartOptions} />
       </div>
-    </div>
+    </>
   );
 }
