@@ -135,8 +135,6 @@ const SalesAnalysis: React.FC = () => {
 
   return (
     <div>
-            <h1 className="text-1xl font-bold mb-4">Análise de Vendas</h1>
-
             <div className="grid grid-cols-6 ">
             <div className="mb-4">
                 <label htmlFor="data" className="block text-sm font-medium text-gray-700">
