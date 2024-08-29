@@ -2,9 +2,9 @@
 
 import { useState, useEffect, ChangeEvent } from 'react';
 import { Bar } from 'react-chartjs-2';
-import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale, LogarithmicScale, LinearScaleOptions, LineElement} from 'chart.js';
+import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LogarithmicScale } from 'chart.js';
 
-ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale, LogarithmicScale, );
+ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LogarithmicScale);
 
 interface DataItem {
   'Tipo de doc.': string;
@@ -16,7 +16,9 @@ interface GroupedData {
   date: string;
   pedidos: number;
   nf: number;
-  devolucao: number;
+  nf_e_devolucao: number;
+  pedido_primeira_data: number;
+  pedido_reprogramado: number;
 }
 
 export default function RevenueChart() {
@@ -26,13 +28,6 @@ export default function RevenueChart() {
 
   const handleDateChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-  
-    // Validação simples para garantir que o valor esteja no formato correto
-    const isValidDate = /^\d{4}-\d{2}-\d{2}$/.test(value);
-    if (!isValidDate) {
-      console.error("Data inválida fornecida:", value);
-      return;
-    }
   
     if (name === 'startDate') {
       setStartDate(value);
@@ -48,7 +43,7 @@ export default function RevenueChart() {
         return;
       }
 
-      const response = await fetch(`http://localhost:3001/api/faturado?startDate=${startDate}&endDate=${endDate}`);
+      const response = await fetch(`http://localhost:3001/api/teste2?startDate=${startDate}&endDate=${endDate}`);
       if (!response.ok) {
         console.error('Erro na resposta da API:', response.statusText);
         return;
@@ -64,16 +59,18 @@ export default function RevenueChart() {
             date: date,
             pedidos: 0,
             nf: 0,
-            devolucao: 0,
+            nf_e_devolucao: 0,
+            pedido_primeira_data: 0,
+            pedido_reprogramado: 0,
           };
         }
 
-        if (tipoDoc === 'Pedidos') {
-          acc[date].pedidos += curr['Total Valor'];
-        } else if (tipoDoc === 'NF') {
-          acc[date].nf += curr['Total Valor'];
-        } else if (tipoDoc === 'Devolução') {
-          acc[date].devolucao += curr['Total Valor'];
+        if (tipoDoc === 'pedido_primeira_data') {
+          acc[date].pedido_primeira_data += curr['Total Valor'];
+        } else if (tipoDoc === 'nf_e_devolucao') {
+          acc[date].nf_e_devolucao += curr['Total Valor'];
+        } else if (tipoDoc === 'pedido_reprogramado') {
+          acc[date].pedido_reprogramado += curr['Total Valor'];
         }
 
         return acc;
@@ -91,37 +88,38 @@ export default function RevenueChart() {
   }, [startDate, endDate]);
 
   const sortedData = data.sort((a, b) => {
-    const [dayA, monthA, yearA] = a.date.split('/').map(Number);
-    const [dayB, monthB, yearB] = b.date.split('/').map(Number);
-    return new Date(yearA, monthA - 1, dayA).getTime() - new Date(yearB, monthB - 1, dayB).getTime();
+    const [yearA, dayA, monthA] = a.date.split('-').map(Number);
+    const [yearB, dayB, monthB] = b.date.split('-').map(Number);
+    
+    return new Date(yearA, monthA, dayA).getTime() - new Date(yearB, monthB, dayB).getTime();
   });
 
   // Filtrar dados, removendo dias sem valores de 'Pedidos', 'NF' e 'Devolução'
-  const filteredData = sortedData.filter(d => d.pedidos > 0 || d.nf > 0 || d.devolucao > 0);
+  const filteredData = sortedData.filter(d => d.pedidos > 0 || d.nf_e_devolucao > 0 || d.pedido_primeira_data > 0 || d.pedido_reprogramado > 0);
 
   // Preparar os dados para o gráfico
   const chartData = {
     labels: filteredData.map(d => d.date),
     datasets: [
       {
-        label: 'Pedidos',
-        data: filteredData.map(d => d.pedidos),
-        backgroundColor: '#1E90FF', // Azul vibrante
-        borderColor: '#1E90FF',
+        label: 'Pedido primeira data',
+        data: filteredData.map(d => d.pedido_primeira_data),
+        backgroundColor: '#2196F3', // Azul Material Design
+        borderColor: '#1E88E5',
         borderWidth: 1,
       },
       {
-        label: 'NF', // Corrigido para NF ao invés de "Expedido"
-        data: filteredData.map(d => d.nf),
-        backgroundColor: '#00FF00', // Verde vibrante
-        borderColor: '#00FF00',
+        label: 'Faturado',
+        data: filteredData.map(d => d.nf_e_devolucao),
+        backgroundColor: '#4CAF50', // Verde Material Design
+        borderColor: '#43A047',
         borderWidth: 1,
       },
       {
-        label: 'Devolução',
-        data: filteredData.map(d => d.devolucao),
-        backgroundColor: '#FF0000', // Vermelho vibrante
-        borderColor: '#FF0000',
+        label: 'Pedido reprogramado',
+        data: filteredData.map(d => d.pedido_reprogramado),
+        backgroundColor: '#FF9800', // Laranja Material Design
+        borderColor: '#FB8C00',
         borderWidth: 1,
       },
     ],
@@ -139,11 +137,11 @@ export default function RevenueChart() {
             family: 'Roboto, sans-serif',
             weight: '500',
           },
-          color: '#4B5563',
+          color: '#000',
         },
       },
       tooltip: {
-        backgroundColor: '#1F2937',
+        backgroundColor: '#333',
         titleFont: {
           size: 18,
           family: 'Roboto, sans-serif',
@@ -154,8 +152,8 @@ export default function RevenueChart() {
           family: 'Roboto, sans-serif',
           weight: '400',
         },
-        padding: 16,
-        cornerRadius: 8,
+        padding: 12,
+        cornerRadius: 4,
         callbacks: {
           label: function (tooltipItem: any) {
             return `${tooltipItem.dataset.label}: R$ ${tooltipItem.raw.toLocaleString()}`;
@@ -165,6 +163,7 @@ export default function RevenueChart() {
     },
     scales: {
       x: {
+        type: 'category',
         grid: {
           display: false,
         },
@@ -173,16 +172,16 @@ export default function RevenueChart() {
             size: 12,
             family: 'Roboto, sans-serif',
           },
-          color: '#6B7280',
+          color: '#000',
           maxRotation: 60,
           minRotation: 60,
         },
       },
       y: {
-        type: 'logarithmic', // Escala logarítmica
+        type: 'logarithmic',
         beginAtZero: true,
         grid: {
-          color: '#E5E7EB',
+          color: '#E0E0E0',
         },
         ticks: {
           callback: function(value: number) {
@@ -192,15 +191,14 @@ export default function RevenueChart() {
             size: 12,
             family: 'Roboto, sans-serif',
           },
-          color: '#6B7280',
-          padding: 0,
+          color: '#000',
         },
       },
     },
   };
 
   return (
-    <div className="w-full bg-white rounded-lg shadow-md">
+    <div className="w-full bg-white rounded-lg shadow-lg p-4">
       <div className="flex justify-end mb-4">
         <input
           type="date"
