@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import { useState, useEffect, ChangeEvent } from 'react';
 import { Bar } from 'react-chartjs-2';
@@ -28,7 +28,7 @@ export default function RevenueChart() {
 
   const handleDateChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-  
+
     if (name === 'startDate') {
       setStartDate(value);
     } else if (name === 'endDate') {
@@ -43,7 +43,7 @@ export default function RevenueChart() {
         return;
       }
 
-      const response = await fetch(`http://localhost:3001/api/teste2?startDate=${startDate}&endDate=${endDate}`);
+      const response = await fetch(`http://localhost:8003/api/pedidos_grafico?startDate=${startDate}&endDate=${endDate}`);
       if (!response.ok) {
         console.error('Erro na resposta da API:', response.statusText);
         return;
@@ -87,15 +87,13 @@ export default function RevenueChart() {
     fetchData();
   }, [startDate, endDate]);
 
-  const sortedData = data.sort((a, b) => {
-    const [yearA, dayA, monthA] = a.date.split('-').map(Number);
-    const [yearB, dayB, monthB] = b.date.split('-').map(Number);
-    
-    return new Date(yearA, monthA, dayA).getTime() - new Date(yearB, monthB, dayB).getTime();
-  });
-
   // Filtrar dados, removendo dias sem valores de 'Pedidos', 'NF' e 'Devolução'
-  const filteredData = sortedData.filter(d => d.pedidos > 0 || d.nf_e_devolucao > 0 || d.pedido_primeira_data > 0 || d.pedido_reprogramado > 0);
+  const filteredData = data.filter(d => d.nf_e_devolucao > 0 || d.pedido_primeira_data > 0 || d.pedido_reprogramado > 0);
+
+  // Calcular o total
+  const total = filteredData.reduce((acc, d) => {
+    return acc + d.nf_e_devolucao 
+  }, 0);
 
   // Preparar os dados para o gráfico
   const chartData = {
@@ -104,22 +102,22 @@ export default function RevenueChart() {
       {
         label: 'Pedido primeira data',
         data: filteredData.map(d => d.pedido_primeira_data),
-        backgroundColor: '#2196F3', // Azul Material Design
-        borderColor: '#1E88E5',
+        backgroundColor: '#4CAF50',
+        borderColor: '#4CAF50',
         borderWidth: 1,
       },
       {
         label: 'Faturado',
         data: filteredData.map(d => d.nf_e_devolucao),
-        backgroundColor: '#4CAF50', // Verde Material Design
-        borderColor: '#43A047',
+        backgroundColor: '#FF5722',
+        borderColor: '#FF5722',
         borderWidth: 1,
       },
       {
         label: 'Pedido reprogramado',
         data: filteredData.map(d => d.pedido_reprogramado),
-        backgroundColor: '#FF9800', // Laranja Material Design
-        borderColor: '#FB8C00',
+        backgroundColor: '#FFC107',
+        borderColor: '#FFC107',
         borderWidth: 1,
       },
     ],
@@ -137,11 +135,11 @@ export default function RevenueChart() {
             family: 'Roboto, sans-serif',
             weight: '500',
           },
-          color: '#000',
+          color: '#3E3E3E',
         },
       },
       tooltip: {
-        backgroundColor: '#333',
+        backgroundColor: '#424242',
         titleFont: {
           size: 18,
           family: 'Roboto, sans-serif',
@@ -153,9 +151,10 @@ export default function RevenueChart() {
           weight: '400',
         },
         padding: 12,
-        cornerRadius: 4,
+        cornerRadius: 8,
+        boxPadding: 6,
         callbacks: {
-          label: function (tooltipItem: any) {
+          label: function (tooltipItem: { dataset: { label: any; }; raw: { toLocaleString: () => any; }; }) {
             return `${tooltipItem.dataset.label}: R$ ${tooltipItem.raw.toLocaleString()}`;
           },
         },
@@ -172,7 +171,8 @@ export default function RevenueChart() {
             size: 12,
             family: 'Roboto, sans-serif',
           },
-          color: '#000',
+          color: '#3E3E3E',
+          autoSkip: false,
           maxRotation: 60,
           minRotation: 60,
         },
@@ -182,40 +182,55 @@ export default function RevenueChart() {
         beginAtZero: true,
         grid: {
           color: '#E0E0E0',
+          lineWidth: 0,
         },
         ticks: {
-          callback: function(value: number) {
+          callback: function(value: { toLocaleString: () => any; }) {
             return `R$ ${value.toLocaleString()}`;
           },
           font: {
-            size: 12,
+            size: 10,
             family: 'Roboto, sans-serif',
           },
-          color: '#000',
+          color: '#3E3E3E',
         },
+      },
+    },
+    elements: {
+      line: {
+        tension: 0,
+        borderWidth: 1,
+      },
+      point: {
+        radius: 0,
+        hoverRadius: 7,
       },
     },
   };
 
   return (
-    <div className="w-full bg-white rounded-lg shadow-lg p-4">
+    <div className="bg-gray-100 p-6 rounded-lg shadow-md font-mono">
+      <h2 className="text-2xl font-bold mb-4"></h2>
       <div className="flex justify-end mb-4">
         <input
           type="date"
           name="startDate"
           value={startDate}
           onChange={handleDateChange}
-          className="p-2 border border-gray-300 rounded-md mr-4"
+          className="p-2 border border-gray-300 rounded-md mr-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <input
           type="date"
           name="endDate"
           value={endDate}
           onChange={handleDateChange}
-          className="p-2 border border-gray-300 rounded-md"
+          className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
+        <div className="flex items-center ml-4">
+          <span className="font-bold text-lg">Faturado: R$ {total.toLocaleString()}</span>
+        </div>
       </div>
-      <div style={{ height: '600px' }}>
+      <div style={{ height: '550px' }}>
         <Bar data={chartData} options={chartOptions} />
       </div>
     </div>

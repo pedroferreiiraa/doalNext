@@ -17,7 +17,9 @@ const SalesAnalysis: React.FC = () => {
   const [data, setData] = useState<SalesData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<{ message: string; date: string; metaMensal: number; diasUteis: string } | null>(null);
-  const [metaMensal, setMetaMensal] = useState<number>(3500000);
+  const [metaMensal, setMetaMensal] = useState(3500000);
+  const [metaMensalPadrao, setUserMetaMensal] = useState<number>(3500000);
+
   const [diasUteis, setDiasUteis] = useState<string>('22');
   const [date, setDate] = useState<string>(() => {
     const today = new Date();
@@ -31,7 +33,7 @@ const SalesAnalysis: React.FC = () => {
   const fetchData = async (date: string) => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3001/api/pedidos', {
+      const response = await fetch('http://localhost:8003/api/pedidos', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -90,15 +92,15 @@ const SalesAnalysis: React.FC = () => {
 
   const formatarValorEmReais = (valor: number | undefined) => {
     if (typeof valor === 'number') {
-      return `R$ ${parseFloat(valor.toString()).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      return `R$ ${parseFloat(valor.toString()).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
     } else {
       return 'R$ 0,00';
     }
   };
   
   const handleMetaMensalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const valor = e.target.value.replace(/\D/g, '');
-    setMetaMensal(valor);
+    const valor = e.target.value;
+    setMetaMensal(parseFloat(valor));
   };
 
   const handleDiasUteisChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -135,7 +137,7 @@ const SalesAnalysis: React.FC = () => {
 
   return (
     <div>
-            <div className="grid grid-cols-6 ">
+            <div className="grid grid-cols-6 font-mono">
             <div className="mb-4">
                 <label htmlFor="data" className="block text-sm font-medium text-gray-700">
                 Data:
@@ -154,11 +156,11 @@ const SalesAnalysis: React.FC = () => {
                 Meta Mensal:
                 </label>
                 <input
-                type="text"
+                type="number"
                 id="metaMensal"
-                value={formatarValorEmReais(metaMensal)}
+                placeholder='R$ 3.500.000,00'
                 onChange={handleMetaMensalChange}
-                className="mt-1 block w-32 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200"
+                className="mt-1 block w-36 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200"
                 />
             </div>
             <div className="mb-4">
@@ -176,7 +178,7 @@ const SalesAnalysis: React.FC = () => {
             </div>
            
 
-      <table className="min-w-full bg-white border border-gray-300 mb-5">
+      <table className="min-w-full bg-white border border-gray-300 mb-5 font-mono">
         <thead> 
             <tr className="bg-blue-600 text-gray-100">
             <th className=" px-4 border-b"></th>

@@ -10,10 +10,9 @@ export default async function Page() {
 
   return (
     <main>
-      <h1 className={`${lusitana.className} mb-4 text-xl md:text-2xl`}>
-        Totais
+      <h1 className="font-medium text-gray-900 pb-1 px-3">
       </h1>
-      <Suspense fallback={<CardsSkeleton />}>
+      <Suspense  fallback={<CardsSkeleton />}>
           <CardWrapper />
         </Suspense>
       <div className="mt-6 ">
